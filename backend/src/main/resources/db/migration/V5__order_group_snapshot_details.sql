@@ -1,0 +1,2 @@
+ALTER TABLE order_group ADD COLUMN origin_address VARCHAR(250) NOT NULL DEFAULT '';
+ALTER TABLE order_group ADD COLUMN template_version BIGINT NOT NULL DEFAULT 1;

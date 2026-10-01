@@ -1,0 +1,64 @@
+# Publish through Nebula. Expose this Service only after TLS and access restriction
+# have been verified on the selected gateway.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchard-mall-admin
+  namespace: {{ target_namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orchard-mall-admin
+  template:
+    metadata:
+      labels:
+        app: orchard-mall-admin
+    spec:
+      imagePullSecrets:
+        - name: {{ image_pull_secret }}
+      containers:
+        - name: admin
+          image: {{ image }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            - name: BACKEND_HOST
+              value: orchard-mall-backend
+            - name: BACKEND_PORT
+              value: "8080"
+          readinessProbe:
+            httpGet:
+              path: /supplier
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchard-mall-admin
+  namespace: {{ target_namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: orchard-mall-admin
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

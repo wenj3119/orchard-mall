@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+BASE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+MVN_HOME="${MAVEN_HOME:-$HOME/.m2/wrapper/dists/apache-maven-3.9.11-bin/35mmlc8l2gc8df1mmimp7tsrbo/apache-maven-3.9.11}"
+if [ ! -x "$MVN_HOME/bin/mvn" ]; then
+  MVN_HOME="$BASE_DIR/.mvn/apache-maven-3.9.11"
+  if [ ! -x "$MVN_HOME/bin/mvn" ]; then
+    curl -fsSL https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.11/apache-maven-3.9.11-bin.tar.gz -o "$BASE_DIR/.mvn/maven.tar.gz"
+    tar -xzf "$BASE_DIR/.mvn/maven.tar.gz" -C "$BASE_DIR/.mvn"
+  fi
+fi
+exec "$MVN_HOME/bin/mvn" -f "$BASE_DIR/pom.xml" "$@"

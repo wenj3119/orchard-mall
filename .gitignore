@@ -1,0 +1,15 @@
+.env
+**/node_modules/
+**/dist/
+**/target/
+**/.DS_Store
+**/.idea/
+**/*.log
+.artifacts/
+backups/
+backend/.mvn/apache-maven-*/
+backend/.mvn/maven.tar.gz
+miniapp/.temp/
+miniapp/.cache/
+miniapp/.swc/
+miniapp/project.private.config.json

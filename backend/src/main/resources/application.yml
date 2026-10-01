@@ -1,0 +1,41 @@
+server:
+  port: ${SERVER_PORT:8080}
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+  endpoints:
+    web:
+      exposure:
+        include: health
+storage:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:}
+  secret-key: ${MINIO_SECRET_KEY:}
+  bucket: ${MINIO_BUCKET:orchard-media}
+app:
+  admin-init-password: ${ADMIN_INIT_PASSWORD:}
+  cors-origin: ${ADMIN_ORIGIN:http://localhost:5173}
+  dev-consumer-login-enabled: ${DEV_CONSUMER_LOGIN_ENABLED:false}
+  dev-payment-enabled: ${DEV_PAYMENT_ENABLED:false}
+  dev-refund-enabled: ${DEV_REFUND_ENABLED:false}
+  payment-merchant-subject: ${PAYMENT_MERCHANT_SUBJECT:orchard-mall-local}
+  order-expiry-minutes: ${ORDER_EXPIRY_MINUTES:30}
+  notification-max-attempts: ${NOTIFICATION_MAX_ATTEMPTS:8}
+  payment-event-recovery-ms: ${PAYMENT_EVENT_RECOVERY_MS:10000}
+  refund-event-recovery-ms: ${REFUND_EVENT_RECOVERY_MS:10000}

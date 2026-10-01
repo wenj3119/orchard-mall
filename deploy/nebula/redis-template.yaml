@@ -1,0 +1,89 @@
+# Optional independent Redis for the test project. The mall currently keeps
+# business state in MySQL and does not configure a Redis client. Supply a
+# project Secret with key redis.conf containing a private requirepass setting.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: orchard-mall-redis-data
+  namespace: {{ target_namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ storage_class }}
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchard-mall-redis
+  namespace: {{ target_namespace }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: orchard-mall-redis
+  template:
+    metadata:
+      labels:
+        app: orchard-mall-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.4-alpine
+          command:
+            - redis-server
+            - /run/secrets/redis.conf
+            - --dir
+            - /data
+            - --appendonly
+            - "yes"
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            tcpSocket:
+              port: redis
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: redis
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /run/secrets
+              readOnly: true
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          secret:
+            secretName: orchard-mall-redis-secret
+            defaultMode: 0400
+        - name: data
+          persistentVolumeClaim:
+            claimName: orchard-mall-redis-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchard-mall-redis
+  namespace: {{ target_namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: orchard-mall-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis

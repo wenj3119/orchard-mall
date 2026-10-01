@@ -1,0 +1,17 @@
+# Non-secret values only. Import as a Nebula project ConfigMap after replacing
+# the test domain, namespace-local service names and merchant subject.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orchard-mall-backend-config
+  namespace: orchard-mall-test
+data:
+  SPRING_PROFILES_ACTIVE: prod
+  DB_URL: jdbc:mysql://orchard-mall-mysql:3306/orchard_mall_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+  MINIO_ENDPOINT: http://orchard-mall-minio:9000
+  MINIO_BUCKET: orchard-mall-test-media
+  ADMIN_ORIGIN: https://mall-test.example.invalid
+  PAYMENT_MERCHANT_SUBJECT: orchard-mall-test
+  DEV_CONSUMER_LOGIN_ENABLED: "false"
+  DEV_PAYMENT_ENABLED: "false"
+  DEV_REFUND_ENABLED: "false"

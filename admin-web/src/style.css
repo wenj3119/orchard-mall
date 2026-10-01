@@ -1,0 +1,19 @@
+body { margin:0; background:#f5f6f7; font-family:system-ui,-apple-system,"PingFang SC",sans-serif; }
+.container { max-width:1280px; margin:24px auto; padding:0 20px; }
+.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.card { background:white; border-radius:12px; padding:20px; margin-bottom:16px; }
+.login { max-width:360px; margin:12vh auto; }
+.row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.thumb { width:64px; height:64px; object-fit:cover; border-radius:6px; }
+.muted { color:#777; }
+@media (max-width: 640px) {
+  .container { margin:12px auto; padding:0 10px; }
+  .header { align-items:flex-start; gap:10px; }
+  .header h2 { font-size:21px !important; }
+  .login { margin:6vh 12px; }
+  .ant-modal { max-width:calc(100vw - 16px); top:8px; padding-bottom:8px; }
+  .ant-modal-content { padding:14px !important; }
+  .ant-form-inline { display:block; }
+  .ant-form-inline .ant-form-item { margin:0 0 10px; width:100%; }
+  .ant-form-inline .ant-form-item-control-input-content > * { width:100% !important; }
+}

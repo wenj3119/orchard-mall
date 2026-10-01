@@ -1,0 +1,2 @@
+CREATE TABLE audit_log (id BIGINT PRIMARY KEY AUTO_INCREMENT, username VARCHAR(80) NOT NULL, method VARCHAR(10) NOT NULL, path VARCHAR(300) NOT NULL, status_code INT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX idx_audit_created ON audit_log (created_at);

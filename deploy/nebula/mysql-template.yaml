@@ -1,0 +1,90 @@
+# Import as a Nebula custom workload template only if the target project has
+# no isolated MySQL 8.4 service. Use an independent PVC and project Secret.
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchard-mall-mysql
+  namespace: {{ target_namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: orchard-mall-mysql
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: mysql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: orchard-mall-mysql
+  namespace: {{ target_namespace }}
+spec:
+  serviceName: orchard-mall-mysql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orchard-mall-mysql
+  template:
+    metadata:
+      labels:
+        app: orchard-mall-mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.4
+          ports:
+            - name: mysql
+              containerPort: 3306
+          env:
+            - name: MYSQL_DATABASE
+              value: orchard_mall_test
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: orchard-mall-mysql-secret
+                  key: MYSQL_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: orchard-mall-mysql-secret
+                  key: MYSQL_PASSWORD
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: orchard-mall-mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+          startupProbe:
+            tcpSocket:
+              port: mysql
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            tcpSocket:
+              port: mysql
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: mysql
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: {{ storage_class }}
+        resources:
+          requests:
+            storage: 20Gi

@@ -1,0 +1,15 @@
+CREATE TABLE admin_user (id BIGINT PRIMARY KEY AUTO_INCREMENT, username VARCHAR(80) NOT NULL UNIQUE, password_hash VARCHAR(100) NOT NULL, enabled BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE admin_session (id BIGINT PRIMARY KEY AUTO_INCREMENT, user_id BIGINT NOT NULL, token_hash CHAR(64) NOT NULL UNIQUE, expires_at TIMESTAMP NOT NULL, FOREIGN KEY (user_id) REFERENCES admin_user(id));
+CREATE TABLE store_settings (id INT PRIMARY KEY, name VARCHAR(120) NOT NULL, logo_url VARCHAR(500), theme_color VARCHAR(20) NOT NULL, contact_phone VARCHAR(40), description VARCHAR(1000));
+INSERT INTO store_settings (id,name,theme_color,description) VALUES (1,'果园好物','#C54535','新鲜苹果与原包装干果');
+CREATE TABLE category (id BIGINT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(100) NOT NULL, sort_order INT NOT NULL DEFAULT 0, enabled BOOLEAN NOT NULL DEFAULT TRUE);
+CREATE TABLE product (id BIGINT PRIMARY KEY AUTO_INCREMENT, category_id BIGINT NOT NULL, title VARCHAR(200) NOT NULL, description TEXT, published BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (category_id) REFERENCES category(id));
+CREATE TABLE sku (id BIGINT PRIMARY KEY AUTO_INCREMENT, product_id BIGINT NOT NULL, code VARCHAR(80) NOT NULL UNIQUE, spec_json TEXT NOT NULL, retail_price_fen BIGINT NOT NULL, active BOOLEAN NOT NULL DEFAULT TRUE, FOREIGN KEY (product_id) REFERENCES product(id), CHECK (retail_price_fen >= 0));
+CREATE TABLE supplier (id BIGINT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(120) NOT NULL, contact_name VARCHAR(80) NOT NULL, contact_phone VARCHAR(40) NOT NULL, enabled BOOLEAN NOT NULL DEFAULT TRUE);
+CREATE TABLE origin (id BIGINT PRIMARY KEY AUTO_INCREMENT, supplier_id BIGINT NOT NULL, label VARCHAR(120) NOT NULL, province VARCHAR(80) NOT NULL, city VARCHAR(80) NOT NULL, address VARCHAR(250) NOT NULL, FOREIGN KEY (supplier_id) REFERENCES supplier(id));
+CREATE TABLE sku_supply (id BIGINT PRIMARY KEY AUTO_INCREMENT, sku_id BIGINT NOT NULL, supplier_id BIGINT NOT NULL, origin_id BIGINT NOT NULL, supply_price_fen BIGINT NOT NULL, is_default BOOLEAN NOT NULL DEFAULT FALSE, FOREIGN KEY (sku_id) REFERENCES sku(id), FOREIGN KEY (supplier_id) REFERENCES supplier(id), FOREIGN KEY (origin_id) REFERENCES origin(id), UNIQUE (sku_id,supplier_id,origin_id), CHECK (supply_price_fen >= 0));
+CREATE TABLE media_object (id BIGINT PRIMARY KEY AUTO_INCREMENT, object_key VARCHAR(300) NOT NULL UNIQUE, content_type VARCHAR(100) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE product_image (product_id BIGINT NOT NULL, media_id BIGINT NOT NULL, sort_order INT NOT NULL DEFAULT 0, PRIMARY KEY (product_id,media_id), FOREIGN KEY (product_id) REFERENCES product(id), FOREIGN KEY (media_id) REFERENCES media_object(id));
+CREATE INDEX idx_product_public ON product (published,category_id);
+CREATE INDEX idx_sku_product ON sku (product_id,active);
+CREATE INDEX idx_supply_default ON sku_supply (sku_id,is_default);

@@ -1,0 +1,75 @@
+# Nebula custom workload template source. Replace parameters through Nebula template
+# values; keep secrets in a project Secret and publish through Nebula's release flow.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchard-mall-backend
+  namespace: {{ target_namespace }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: orchard-mall-backend
+  template:
+    metadata:
+      labels:
+        app: orchard-mall-backend
+    spec:
+      imagePullSecrets:
+        - name: {{ image_pull_secret }}
+      containers:
+        - name: backend
+          image: {{ image }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: orchard-mall-backend-config
+            - secretRef:
+                name: orchard-mall-backend-secret
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchard-mall-backend
+  namespace: {{ target_namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: orchard-mall-backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
