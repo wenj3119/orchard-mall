@@ -2,9 +2,9 @@ server:
   port: ${SERVER_PORT:8080}
 spring:
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:mysql://192.168.3.100:3306/orchard_mall?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:Wenjun100}
   flyway:
     enabled: true
   servlet:
@@ -24,13 +24,13 @@ management:
       exposure:
         include: health
 storage:
-  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  endpoint: ${MINIO_ENDPOINT:http://orchard-mall-minio-stable:9000}
   access-key: ${MINIO_ACCESS_KEY:}
   secret-key: ${MINIO_SECRET_KEY:}
   bucket: ${MINIO_BUCKET:orchard-media}
 app:
-  admin-init-password: ${ADMIN_INIT_PASSWORD:}
-  cors-origin: ${ADMIN_ORIGIN:http://localhost:5173}
+  admin-init-password: ${ADMIN_INIT_PASSWORD:admin123!}
+  cors-origin: ${ADMIN_ORIGIN:https://orchard.douwen.top}
   dev-consumer-login-enabled: ${DEV_CONSUMER_LOGIN_ENABLED:false}
   dev-payment-enabled: ${DEV_PAYMENT_ENABLED:false}
   dev-refund-enabled: ${DEV_REFUND_ENABLED:false}
