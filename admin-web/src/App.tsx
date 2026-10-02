@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Card, Form, Image, Input, InputNumber, Layout, Modal, Popconfirm, Select, Space, Switch, Table, Tabs, Tag, Typography, Upload, message } from 'antd'
 import type { UploadProps } from 'antd'
-import { api, json, type Row } from './api'
+import { api, json, uploadAdminMedia, type Row } from './api'
 import SettlementOperations from './SettlementOperations'
 import AfterSaleDevRefundPanel from './AfterSaleDevRefundPanel'
 import SupplierUsersPanel from './SupplierUsersPanel'
@@ -49,8 +49,7 @@ function StorePanel() {
     <Form.Item name="name" label="店名" rules={[{ required: true }]}><Input maxLength={120} /></Form.Item>
     <Form.Item name="logoUrl" label="Logo URL"><Input placeholder="公开图片地址" /></Form.Item>
     <Upload showUploadList={false} accept="image/jpeg,image/png,image/webp" customRequest={async ({ file, onSuccess, onError }) => {
-      const data = new FormData(); data.append('file', file as File)
-      try { const media = await api<Row>('/api/admin/media', { method: 'POST', body: data }); form.setFieldValue('logoUrl', media.url); onSuccess?.(media); message.success('Logo 已上传，请保存店铺配置') }
+      try { const media = await uploadAdminMedia(file as File); form.setFieldValue('logoUrl', media.url); onSuccess?.(media); message.success('Logo 已上传，请保存店铺配置') }
       catch (e) { onError?.(e as Error); message.error((e as Error).message) }
     }}><Button style={{ marginBottom: 16 }}>上传 Logo</Button></Upload>
     <Form.Item name="themeColor" label="主题色" rules={[{ required: true }, { pattern: /^#[\da-fA-F]{6}$/, message: '请输入 #RRGGBB' }]}><Input /></Form.Item>
@@ -182,9 +181,8 @@ function ProductsPanel() {
   useEffect(() => { reload(); refreshReferences().catch(e => message.error(e.message)) }, [])
   const upload: UploadProps = { showUploadList: false, customRequest: async ({ file, onSuccess, onError }) => {
     if (!selected) return
-    const data = new FormData(); data.append('file', file as File)
     try {
-      const media = await api<Row>('/api/admin/media', { method: 'POST', body: data })
+      const media = await uploadAdminMedia(file as File)
       await api(`/api/admin/products/${selected.id}/images`, json('PUT', [...selected.images.map((v: Row) => v.id), media.id]))
       await loadSelected(selected.id); reload(); onSuccess?.(media); message.success('上传成功')
     } catch (e) { onError?.(e as Error); message.error((e as Error).message) }

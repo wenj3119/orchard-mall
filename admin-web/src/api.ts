@@ -1,14 +1,17 @@
 const base = import.meta.env.VITE_API_BASE || ''
 export type Row = Record<string, any>
 export async function api<T = Row>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = { ...(options.headers as Record<string, string> || {}) }
-  const token = path.startsWith('/api/supplier/') ? localStorage.getItem('supplier_token') : localStorage.getItem('admin_token')
-  if (token) headers.Authorization = `Bearer ${token}`
-  if (options.body && !(options.body instanceof FormData)) headers['Content-Type'] = 'application/json'
+  const headers = new Headers(options.headers)
+  const tokenKey = path.startsWith('/api/supplier/') ? 'supplier_token' : 'admin_token'
+  const token = localStorage.getItem(tokenKey)
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  else headers.delete('Authorization')
+  if (options.body instanceof FormData) headers.delete('Content-Type')
+  else if (options.body) headers.set('Content-Type', 'application/json')
   const response = await fetch(base + path, { ...options, headers })
   if (response.status === 401) {
-    if (path.startsWith('/api/supplier/')) localStorage.removeItem('supplier_token')
-    else if (path !== '/api/auth/login') localStorage.removeItem('admin_token')
+    if (path !== '/api/auth/login' && path !== '/api/supplier/auth/login' && localStorage.getItem(tokenKey) === token)
+      localStorage.removeItem(tokenKey)
     const error = await response.json().catch(() => ({}))
     throw new Error(error.message || error.detail || '登录已失效，请重新登录')
   }
@@ -28,3 +31,8 @@ export async function api<T = Row>(path: string, options: RequestInit = {}): Pro
 }
 export const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
 export const imageUrl = (path?: string) => path ? base + path : ''
+export const uploadAdminMedia = (file: File) => {
+  const body = new FormData()
+  body.append('file', file)
+  return api<{ id: number; url: string }>('/api/admin/media', { method: 'POST', body })
+}
