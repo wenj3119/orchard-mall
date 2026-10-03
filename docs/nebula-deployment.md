@@ -33,7 +33,9 @@ TARO_APP_API_BASE=https://<已验证的测试域名> npm run build:nebula:weapp
 TARO_APP_API_BASE=https://<已验证的测试域名> npm run build:nebula:alipay
 ```
 
-这两个脚本要求 HTTPS、拒绝示例域名和开发模拟支付开关；本地 `build:weapp` / `build:alipay` 与之分开。产物在 `dist/weapp` / `dist/alipay`；还须在对应平台配置 request、uploadFile、downloadFile 合法域名，并由有权限的测试者在开发者工具及真机实际验收。当前真实微信/支付宝登录和支付适配器不可用，关闭开发登录后，小程序只能验公开商品等无需消费者身份的功能。
+这两个脚本要求 HTTPS、拒绝示例域名和开发模拟支付开关，并强制隐藏开发身份登录；本地 `build:weapp` / `build:alipay` 与之分开。微信服务器体验版使用 `TARO_APP_API_BASE=https://orchard.douwen.top TARO_APP_DEV_PAYMENT_ENABLED=false TARO_APP_DEV_LOGIN_ENABLED=false npm run build:nebula:weapp`。产物在 `dist/weapp` / `dist/alipay`；还须在对应平台配置 request、uploadFile、downloadFile 合法域名，并由有权限的测试者在开发者工具及真机实际验收。微信真实登录代码已接入，真实凭据和真机联调尚未完成；支付宝真实登录及支付适配器仍不可用。
+
+微信登录发布时，在 Nebula 后端 ConfigMap 设置 `WECHAT_MINIAPP_APP_ID=wx1bd16bd6d48b3f93`，在后端 Secret 设置对应小程序的 `WECHAT_MINIAPP_APP_SECRET`。AppID 必须与 `miniapp/project.config.json` 一致；AppSecret 仅通过 Secret 注入，不作为镜像参数、前端变量或日志内容。后端 Pod 需能通过 HTTPS 访问 `api.weixin.qq.com`；先构建、发布含 `/api/wechat/auth/login` 的后端镜像并检查就绪，再上传新的微信小程序体验版。`DEV_CONSUMER_LOGIN_ENABLED`、`DEV_PAYMENT_ENABLED`、`DEV_REFUND_ENABLED` 均保持 `false`。用有权限的微信账号在真机验证登录、`/api/customer/me`、购物车和订单归属，重复登录应返回同一消费者 ID；换一个微信账号应得到独立数据。未配置真实 AppSecret 时该接口返回 503，不能把自动化模拟换码测试写成真实联调通过。
 
 ## Flyway、健康检查与回退
 

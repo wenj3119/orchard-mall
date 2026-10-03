@@ -60,7 +60,7 @@ public class SecurityConfig {
                 }))
             .authorizeHttpRequests(a -> a
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/login", "/api/supplier/auth/login", "/api/dev/consumer-login", "/api/public/**", "/api/media/**", "/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
+                .requestMatchers("/api/auth/login", "/api/supplier/auth/login", "/api/dev/consumer-login", "/api/wechat/auth/login", "/api/public/**", "/api/media/**", "/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
                 .requestMatchers("/api/auth/logout").authenticated()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/customer/**").hasRole("CUSTOMER")

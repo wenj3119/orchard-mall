@@ -7,7 +7,9 @@ export type Address = { id: number; recipient: string; mobile: string; provinceC
 export type CartItem = { id: number; skuId: number; productId: number; productTitle: string; skuCode: string; specJson: string; unitPriceFen: number; quantity: number; selected: boolean; rowVersion: number; imageUrl?: string; netWeightG: number; billableWeightG: number; availableQty: number; unavailableReason?: string }
 export type OrderSummary = { id: number; orderNo: string; status: 'PENDING_PAYMENT' | 'CLOSE_PENDING' | 'PAID' | 'CANCELLED' | 'CLOSED'; paymentStatus: string; fulfillmentStatus: 'NOT_STARTED' | 'PENDING' | 'PARTIALLY_SHIPPED' | 'SHIPPED'; completionStatus: 'NOT_COMPLETED' | 'COMPLETED'; afterSalesStatus: string; itemAmountFen: number; shippingAmountFen: number; payableAmountFen: number; createdAt: string; expiresAt: string }
 export const asset = (path?: string) => path ? (/^https?:\/\//.test(path) ? path : API_BASE + path) : ''
-export const customerToken = () => Taro.getStorageSync<string>('customer_token')
+const customerTokenKey = () => DEV_LOGIN_ENABLED ? 'customer_token' : 'customer_token_wechat'
+export const customerToken = () => Taro.getStorageSync<string>(customerTokenKey())
+export const saveCustomerToken = (token: string) => Taro.setStorageSync(customerTokenKey(), token)
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message) }
 }
@@ -18,7 +20,7 @@ export async function request<T>(path: string, method: 'GET' | 'POST' | 'PUT' | 
     header: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
   })
   if (response.statusCode === 401 || response.statusCode === 403) {
-    Taro.removeStorageSync('customer_token')
+    Taro.removeStorageSync(customerTokenKey())
     throw new ApiError(response.statusCode, '请先登录')
   }
   if (response.statusCode < 200 || response.statusCode >= 300)

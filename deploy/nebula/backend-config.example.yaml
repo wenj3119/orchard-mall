@@ -11,6 +11,7 @@ data:
   MINIO_ENDPOINT: http://orchard-mall-minio:9000
   MINIO_BUCKET: orchard-mall-test-media
   ADMIN_ORIGIN: https://mall-test.example.invalid
+  WECHAT_MINIAPP_APP_ID: wx1bd16bd6d48b3f93
   PAYMENT_MERCHANT_SUBJECT: orchard-mall-test
   DEV_CONSUMER_LOGIN_ENABLED: "false"
   DEV_PAYMENT_ENABLED: "false"

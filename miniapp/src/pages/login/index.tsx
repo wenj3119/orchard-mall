@@ -1,8 +1,55 @@
 import { useState } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Input, Picker, Text, View } from '@tarojs/components'
-import { ApiError, request } from '../../api'
+import { ApiError, request, saveCustomerToken } from '../../api'
+
+async function returnToPage(returnUrl?: string) {
+  let target = '/pages/index/index'
+  try {
+    const decoded = returnUrl ? decodeURIComponent(returnUrl) : ''
+    if (/^\/pages\/[a-z-]+\/index(?:\?.*)?$/.test(decoded)) target = decoded
+  } catch { /* An invalid return URL falls back to the home page. */ }
+  if (['/pages/index/index', '/pages/cart/index', '/pages/orders/index', '/pages/categories/index'].includes(target.split('?')[0]))
+    await Taro.switchTab({ url: target.split('?')[0] })
+  else await Taro.redirectTo({ url: target })
+}
+
 export default function Login() {
+  return DEV_LOGIN_ENABLED ? <DevelopmentLogin /> : <WechatLogin />
+}
+
+function WechatLogin() {
+  const { params } = useRouter()
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const login = async () => {
+    if (submitting) return
+    setSubmitting(true)
+    setError('')
+    try {
+      const result = await Taro.login()
+      if (!result.code) throw new Error('未取得微信登录凭证，请重试')
+      const session = await request<{ token: string }>('/api/wechat/auth/login', 'POST', { code: result.code })
+      saveCustomerToken(session.token)
+      await returnToPage(params.returnUrl)
+    } catch (cause) {
+      const message = (cause as Error).message || '微信登录失败，请重试'
+      setError(message)
+      Taro.showToast({ title: message, icon: 'none', duration: 3000 })
+    } finally { setSubmitting(false) }
+  }
+  if (Taro.getEnv() !== Taro.ENV_TYPE.WEAPP)
+    return <View className="page"><Text className="heading">当前平台登录尚未接入</Text></View>
+  return <View className="page"><Text className="heading">微信登录</Text>
+    <Text className="note">登录后可查看自己的购物车、订单与售后记录。</Text>
+    {error && <Text className="error">{error}</Text>}
+    <View className="primary-button" style={{ opacity: submitting ? 0.6 : 1 }} onClick={login}>
+      {submitting ? '登录中…' : '微信登录'}
+    </View>
+  </View>
+}
+
+function DevelopmentLogin() {
   const { params } = useRouter()
   const [platform, setPlatform] = useState<'WECHAT' | 'ALIPAY'>('WECHAT')
   const [userId, setUserId] = useState('demo-user')
@@ -18,20 +65,15 @@ export default function Login() {
     setError('')
     try {
       const result = await request<{ token: string }>('/api/dev/consumer-login', 'POST', { platform, externalUserId: userId })
-      Taro.setStorageSync('customer_token', result.token)
-      const target = params.returnUrl ? decodeURIComponent(params.returnUrl) : '/pages/index/index'
-      if (target.includes('/pages/index/') || target.includes('/pages/cart/') || target.includes('/pages/orders/'))
-        await Taro.switchTab({ url: target })
-      else await Taro.redirectTo({ url: target })
+      saveCustomerToken(result.token)
+      await returnToPage(params.returnUrl)
     } catch (cause) {
       const message = cause instanceof ApiError && cause.status === 404
         ? '开发登录接口返回 404，请确认连接的是已开启模拟登录的 dev/test 后端'
         : (cause as Error).message || '登录失败，请检查网络后重试'
       setError(message)
       Taro.showToast({ title: message, icon: 'none', duration: 3000 })
-    } finally {
-      setSubmitting(false)
-    }
+    } finally { setSubmitting(false) }
   }
   return <View className="page"><Text className="heading">开发环境登录</Text>
     <Text className="note">仅调用后端开发模拟入口；正式环境禁止启用。微信与支付宝身份不会自动合并。</Text>

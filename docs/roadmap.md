@@ -6,7 +6,7 @@ Bootstrap infrastructure and migrations; secure admin login; manage store, categ
 
 ## Phase 2 — order placement (complete in this delivery)
 
-Customer identity, cart, addresses, mainland shipping rules and quote, default-supply inventory reservation, immutable checkout snapshots, pending-order lifecycle and retryable timeout closure are implemented. Automated tests cover ownership, shipping boundaries, quote changes, idempotency, snapshots and release races; a live MySQL smoke test covers the full flow and last-unit concurrency. Real platform OAuth and payment remain Phase 3 work.
+Customer identity, cart, addresses, mainland shipping rules and quote, default-supply inventory reservation, immutable checkout snapshots, pending-order lifecycle and retryable timeout closure are implemented. Automated tests cover ownership, shipping boundaries, quote changes, idempotency, snapshots and release races; a live MySQL smoke test covers the full flow and last-unit concurrency. WeChat code exchange login is implemented but awaits real AppSecret and device acceptance; Alipay login and real payment remain later work.
 
 ## Phase 3 — payment and fulfillment (complete for development integration)
 

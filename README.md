@@ -12,7 +12,7 @@ Nebula 的管理端和后端已部署（据线上验收反馈）。本地仓库�
 - 管理员密码登录、服务端令牌鉴权、最近管理操作日志；店铺名称、Logo 图片、主题色、联系电话与介绍配置。
 - 管理端商品图片与 Logo 上传共用管理员请求封装，发送时读取当前令牌，并由浏览器生成 multipart boundary；该修复待 Nebula 前端镜像重新构建、发布和页面验收。
 - 分类、商品、SKU、商品图片、上下架、区分自营果园/农户/厂家的供应商、供应商多发货地、SKU 供货来源管理。每条来源显式绑定供应商、启用发货地、供货价、独立库存和运费模板；商品产地独立保存。上架必须具备图片及供应商/发货地/模板均启用的默认供货来源。
-- React / Ant Design 管理后台对接管理 API；Taro 微信和支付宝小程序提供商品浏览、开发登录、地址、购物车、确认订单、订单列表/详情及取消。
+- React / Ant Design 管理后台对接管理 API；Taro 微信和支付宝小程序提供商品浏览、地址、购物车、确认订单、订单列表/详情及取消。微信小程序真实登录代码已接入，待真实 AppSecret 与真机联调；本地 dev/test 仍可使用开发身份登录。
 - 公开 API 只返回已上架商品与可售 SKU，不公开供应商报价和联系人。
 - 微信/支付宝消费者身份分别绑定，不自动跨平台合并；开发模拟登录仅能在 `dev`/`test` 启用，任何含 `prod` 的环境会拒绝启动。
 - 收货地址归属隔离、购物车失效原因、服务端价格与默认供货来源复核、按“供应商 + 发货地 + 来源运费模板”拆组的大陆运费试算；不自动择仓。
@@ -32,7 +32,7 @@ Nebula 的管理端和后端已部署（据线上验收反馈）。本地仓库�
 
 ## 尚未实现
 
-真实微信/支付宝登录、支付/退款验签与资金调用、物流轨迹查询、自动确认收货、退货寄回/换货、自动责任裁定、自动转账/分账和正式环境限流。开发模拟结果不是微信、支付宝或银行接入成功；Redis 已提供，但订单、支付、退款、库存、履约和结算台账以 MySQL 为最终依据。
+真实微信登录的凭据配置和真机联调、真实支付宝登录、支付/退款验签与资金调用、物流轨迹查询、自动确认收货、退货寄回/换货、自动责任裁定、自动转账/分账和正式环境限流。开发模拟结果不是微信、支付宝或银行接入成功；Redis 已提供，但订单、支付、退款、库存、履约和结算台账以 MySQL 为最终依据。
 
 ## 外部接入前提
 
@@ -83,14 +83,24 @@ npm run dev
 ```sh
 cd miniapp
 npm ci
-TARO_APP_API_BASE=http://127.0.0.1:8080 TARO_APP_DEV_PAYMENT_ENABLED=true npm run dev:weapp
+TARO_APP_API_BASE=http://127.0.0.1:8080 TARO_APP_DEV_LOGIN_ENABLED=true TARO_APP_DEV_PAYMENT_ENABLED=true npm run dev:weapp
 # 或
 TARO_APP_API_BASE=http://127.0.0.1:8080 npm run dev:alipay
 ```
 
 微信开发者工具已导入 `miniapp` 目录，项目配置的 `miniprogramRoot` 为 `dist/weapp/`，AppID 为 `wx1bd16bd6d48b3f93`；工具 Stable v2.02.2608070 已登录、服务端口已开启，模拟器页面操作见 [验收记录](docs/verification.md)。支付宝工具仍导入 `miniapp/dist/alipay`。Taro 4.0.9 的构建脚本使用项目级 `--no-check` 跳过构建前 `plugin-doctor.validateConfig` 配置有效性检查（包括其远程 Schema 路径），避免该 macOS 原生校验线程 panic；仍执行独立的 TypeScript/webpack 编译及产物核对，不修改依赖和锁文件。待该校验组件在本机稳定运行、去掉参数后双端构建通过并补做配置校验，才能移除 workaround。
 
-### 微信真机开发调试准备（2026-09-30）
+### 微信服务器体验版构建（2026-10-03）
+
+在 `miniapp` 目录执行：
+
+```sh
+TARO_APP_API_BASE=https://orchard.douwen.top TARO_APP_DEV_LOGIN_ENABLED=false TARO_APP_DEV_PAYMENT_ENABLED=false npm run build:nebula:weapp
+```
+
+`TARO_APP_API_BASE` 只填写 HTTPS 源站，不加尾随 `/` 或 `/api`；接口路径本身以 `/api` 开头，商品图片和售后凭证上传共用这个基址。`build:nebula:weapp` 要求显式 HTTPS 源站、隐藏开发身份输入并关闭小程序开发模拟支付展示。真实微信登录调用 `Taro.login()` 获取一次性 code，向 `/api/wechat/auth/login` 发送 code；后端换取 OpenID 后签发消费者会话。服务器体验版与本地开发版分开存储会话令牌，登录成功返回原页面。Nebula 后端 ConfigMap 需配置 `WECHAT_MINIAPP_APP_ID=wx1bd16bd6d48b3f93`，后端 Secret 需配置对应的 `WECHAT_MINIAPP_APP_SECRET`；后端须能访问 `api.weixin.qq.com`，三个 `DEV_*_ENABLED` 模拟开关保持关闭。2026-10-03 构建成功，`dist/weapp` 已核对使用 `https://orchard.douwen.top`，不含旧的本地 API 基址，登录页产物不含开发登录入口；真实微信凭据与真机联调尚未完成。微信开发者工具导入项目目录 `miniapp`，根目录 `project.config.json` 的 `miniprogramRoot=dist/weapp/` 指向本次产物。先发布新后端，再重新编译、预览或上传小程序版本，旧体验版不会自动更新；本轮未部署或上传。
+
+### 微信真机本地开发调试记录（2026-09-30）
 
 本次电脑的 `en0` 局域网地址是 `192.168.1.8`，后端监听 18084；仅供同一可信局域网的临时开发调试。微信构建命令为 `cd miniapp && TARO_APP_API_BASE=http://192.168.1.8:18084 TARO_APP_DEV_PAYMENT_ENABLED=false npm run build:weapp`，产物 `dist/weapp/common.js` 已核对为此地址。请求、商品图片与私有凭证上传均使用这个 API 基址，商品图片为 `http://192.168.1.8:18084/api/media/3`；凭证下载由后端鉴权，不直接开放 MinIO。电脑上的后台仍从 `http://localhost:5173` 进入。手机不能用 `localhost` 或 `127.0.0.1` 访问电脑，IP 变化时须重新构建并生成预览码。
 

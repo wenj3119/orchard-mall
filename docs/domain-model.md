@@ -14,7 +14,7 @@
 
 ## Implemented in Phase 2
 
-- `consumer_account` is separate from administrators. `consumer_identity` binds one platform/AppID user identity without cross-platform merging; `consumer_session` stores only token hashes.
+- `consumer_account` is separate from administrators. `consumer_identity` binds one platform/AppID user identity without cross-platform merging; WeChat OpenID comes only from the server-side code exchange. The unique `(platform, app_id, platform_user_id)` key serializes concurrent first logins, and a failed insert rolls back its new consumer row. `consumer_session` stores only token hashes; neither WeChat AppSecret nor session key is persisted.
 - `customer_address` belongs to one consumer. Checkout copies every recipient/phone/region/detail field into `sales_order`, so address edits do not affect order history.
 - `shopping_cart` is unique by consumer and SKU and carries a row version. Successful checkout removes only rows whose IDs and versions still match the quote.
 - `shipping_template` has an optional per-fulfillment-group free-shipping threshold and a monotonic version. `shipping_rule` stores mainland region matching, blocked regions, first/step weights and fees.

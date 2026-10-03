@@ -9,7 +9,8 @@ export default defineConfig({
   plugins: [],
   defineConstants: {
     API_BASE: JSON.stringify(process.env.TARO_APP_API_BASE || 'http://127.0.0.1:18084'),
-    DEV_PAYMENT_ENABLED: JSON.stringify(process.env.TARO_APP_DEV_PAYMENT_ENABLED === 'true')
+    DEV_PAYMENT_ENABLED: JSON.stringify(process.env.TARO_APP_DEV_PAYMENT_ENABLED === 'true'),
+    DEV_LOGIN_ENABLED: JSON.stringify(process.env.TARO_APP_DEV_LOGIN_ENABLED !== 'false')
   },
   copy: { patterns: [], options: {} },
   framework: 'react',

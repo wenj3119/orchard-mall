@@ -107,7 +107,7 @@ export default function AfterSales() {
       {detail.items.map((i, n) => <Text className="subtle" key={n}>{i.productTitle} {i.skuCode} × {i.requestedQty}</Text>)}
       <Text className="subtle">已上传凭证：{detail.evidence.length} 张</Text>
       <View className="small-button" onClick={() => addEvidence(detail.id)}>{uploading ? '上传中…' : '继续上传凭证'}</View>
-      {detail.refunds.map(r => <View key={r.refundNo}><Text className="subtle">退款 {r.refundNo} · {money(r.amountFen)} · {refundStatusName(r.status)}</Text><Text className="note">模拟退款状态，仅用于开发验证，不代表微信、支付宝或银行结果。</Text></View>)}
+      {detail.refunds.map(r => <View key={r.refundNo}><Text className="subtle">退款 {r.refundNo} · {money(r.amountFen)} · {refundStatusName(r.status)}</Text>{DEV_LOGIN_ENABLED && <Text className="note">模拟退款状态，仅用于开发验证，不代表微信、支付宝或银行结果。</Text>}</View>)}
       {detail.replacementTasks.map(t => <Text className="subtle" key={t.taskNo}>补发任务 {t.taskNo} · {taskStatusName(t.status)}；包裹会显示在原订单详情</Text>)}
     </View>}
   </View>
