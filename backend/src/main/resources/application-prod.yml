@@ -40,5 +40,5 @@ app:
   payment-event-recovery-ms: ${PAYMENT_EVENT_RECOVERY_MS:10000}
   refund-event-recovery-ms: ${REFUND_EVENT_RECOVERY_MS:10000}
   wechat-miniapp:
-    app-id: ${WECHAT_MINIAPP_APP_ID:}
-    app-secret: ${WECHAT_MINIAPP_APP_SECRET:}
+    app-id: ${WECHAT_MINIAPP_APP_ID:wx1bd16bd6d48b3f93}
+    app-secret: ${WECHAT_MINIAPP_APP_SECRET:2d51b66703128a8c637ceac2e2d92ee7}
