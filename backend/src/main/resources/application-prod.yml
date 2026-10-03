@@ -39,3 +39,6 @@ app:
   notification-max-attempts: ${NOTIFICATION_MAX_ATTEMPTS:8}
   payment-event-recovery-ms: ${PAYMENT_EVENT_RECOVERY_MS:10000}
   refund-event-recovery-ms: ${REFUND_EVENT_RECOVERY_MS:10000}
+  wechat-miniapp:
+    app-id: ${WECHAT_MINIAPP_APP_ID:}
+    app-secret: ${WECHAT_MINIAPP_APP_SECRET:}
