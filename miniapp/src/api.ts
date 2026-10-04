@@ -8,7 +8,13 @@ export type Region = { code: string; name: string; children: Region[] }
 export const newCheckoutAddressKey = 'new_checkout_address_id'
 export type CartItem = { id: number; skuId: number; productId: number; productTitle: string; skuCode: string; specJson: string; unitPriceFen: number; quantity: number; selected: boolean; rowVersion: number; imageUrl?: string; netWeightG: number; billableWeightG: number; availableQty: number; unavailableReason?: string }
 export type OrderSummary = { id: number; orderNo: string; status: 'PENDING_PAYMENT' | 'CLOSE_PENDING' | 'PAID' | 'CANCELLED' | 'CLOSED'; paymentStatus: string; fulfillmentStatus: 'NOT_STARTED' | 'PENDING' | 'PARTIALLY_SHIPPED' | 'SHIPPED'; completionStatus: 'NOT_COMPLETED' | 'COMPLETED'; afterSalesStatus: string; itemAmountFen: number; shippingAmountFen: number; payableAmountFen: number; createdAt: string; expiresAt: string }
-export const asset = (path?: string) => path ? (/^https?:\/\//.test(path) ? path : API_BASE + path) : ''
+export const buildDiagnostic = { apiOrigin: API_BASE, buildId: BUILD_ID }
+export function apiUrl(path: string) {
+  const relative = path.startsWith(`${API_BASE}/`) ? path.slice(API_BASE.length) : path
+  if (!/^\/api\/(?!api(?:\/|$))/.test(relative)) throw new Error('接口路径必须以 /api/ 开头且不能重复拼接 /api')
+  return API_BASE + relative
+}
+export const asset = (path?: string) => path ? apiUrl(path) : ''
 const customerTokenKey = () => DEV_LOGIN_ENABLED ? 'customer_token' : 'customer_token_wechat'
 export const customerToken = () => Taro.getStorageSync<string>(customerTokenKey())
 export const saveCustomerToken = (token: string) => Taro.setStorageSync(customerTokenKey(), token)
@@ -18,7 +24,7 @@ export class ApiError extends Error {
 export async function request<T>(path: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', data?: unknown): Promise<T> {
   const token = customerToken()
   const response = await Taro.request<T & { detail?: string; message?: string }>({
-    url: API_BASE + path, method, data,
+    url: apiUrl(path), method, data,
     header: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
   })
   if (response.statusCode === 401 || response.statusCode === 403) {
@@ -30,7 +36,8 @@ export async function request<T>(path: string, method: 'GET' | 'POST' | 'PUT' | 
   return response.data
 }
 export const get = <T,>(path: string) => request<T>(path)
-export async function upload(path:string,filePath:string){const token=customerToken();const response=await Taro.uploadFile({url:API_BASE+path,filePath,name:'file',header:token?{Authorization:`Bearer ${token}`}:{}});if(response.statusCode<200||response.statusCode>=300){let detail='上传失败';try{detail=JSON.parse(response.data).detail||detail}catch{}throw new Error(detail)}return JSON.parse(response.data)}
+export async function upload(path:string,filePath:string){const token=customerToken();const response=await Taro.uploadFile({url:apiUrl(path),filePath,name:'file',header:token?{Authorization:`Bearer ${token}`}:{}});if(response.statusCode<200||response.statusCode>=300){let detail='上传失败';try{detail=JSON.parse(response.data).detail||detail}catch{}throw new Error(detail)}return JSON.parse(response.data)}
+export async function download(path:string){const token=customerToken();return Taro.downloadFile({url:apiUrl(path),header:token?{Authorization:`Bearer ${token}`}:{}})}
 export function requireLogin(returnUrl?: string) {
   if (customerToken()) return true
   Taro.navigateTo({ url: `/pages/login/index${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}` })

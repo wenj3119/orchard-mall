@@ -269,3 +269,10 @@ Executed on 2026-09-20 with local JDK 26 targeting Java 21, Node 26, MySQL 8.4 i
 - 订单 14、15 的私有凭证在当前 bucket；复用消费者 15 的开发登录后，经局域网鉴权读取 `/api/customer/after-sales/evidence/5` 和 `/api/customer/after-sales/evidence/6` 均返回 200、`image/png`、68 字节。小程序的 `Taro.request`、商品图片 `asset()` 和 `Taro.uploadFile` 共用 `API_BASE`；本阶段没有在手机上传文件或发起售后。
 - 只重建微信目标：`TARO_APP_API_BASE=http://192.168.1.8:18084 TARO_APP_DEV_PAYMENT_ENABLED=false npm run build:weapp` 成功；实际 `dist/weapp/common.js` 只有 `http://192.168.1.8:18084`，无 `127.0.0.1:18084`。微信开发者工具 CLI 使用项目 AppID `wx1bd16bd6d48b3f93` 生成临时[预览码](../.artifacts/phase5/weapp-lan-preview-20260930.jpg)，包大小 342001 字节。
 - **真机结果待用户反馈**：电脑经局域网地址访问成功及开发者工具生成预览码，均不能证明手机能访问。用户需用有 AppID 权限的微信账号扫码，连接与电脑相同的可信局域网，依次验证开发登录、商品图、规格、购物车、北京地址、1934 分试算、订单 14/15 与退款进度；记录每一步手机画面和报错。项目本地 `urlCheck=false` 仅供开发调试，手机预览若仍受 HTTP/IP 合法域名限制，须在开发者工具使用“真机调试”取得实际请求错误；本地设置不等于正式上线配置。正式环境仍需 HTTPS 和平台合法域名，不能沿用本次 IP/HTTP 地址。
+
+## 2026-10-04 小程序服务器 API 域名与构建隔离
+
+- 已确认旧根项目 `miniprogramRoot=dist/weapp/`，服务器和普通本地构建/watch 共写该目录。此前本地 `npm run build:weapp` 未传 API 环境变量时，`config/index.ts` 回退到 `http://127.0.0.1:18084`；检查时旧 `dist/weapp/common.js` 确实含该地址且不含服务器域名。没有发现正在运行的 Taro watch；无法从当前进程证明过去是否曾有 watch 覆盖。根目录 `.env` 中的 `TARO_APP_API_BASE` 不会由 miniapp 自动加载，Storage 没有 API 域名读取逻辑。
+- 服务器 `npm run build:nebula:weapp` 生成 `dist/server/weapp`，本地 `npm run build:weapp` 和 `npm run dev:weapp` 生成 `dist/local/weapp`；本地构建与 watch 后服务器 `common.js` 哈希仍为 `81a14a04c772fcb17c86f43ddd8ac17156d473d7d8813b616925467dc1d81eff`。服务器构建在继承旧的 `TARO_APP_API_BASE=http://127.0.0.1:18084` 时仍编译为固定 `https://orchard.douwen.top`。直接运行未指定变体的 Taro 构建、或以回环地址声明服务器变体，均在配置阶段失败；模拟支付开关为 true 的服务器构建被拒绝。
+- `tsc --noEmit`、微信服务器/本地构建、支付宝服务器/本地构建和服务器产物复核通过。微信根项目 `miniprogramRoot=dist/server/weapp/`；服务器产物自己的 `project.config.json` 为 `./`。构建 ID 可在 `build-info.json` 和模拟器控制台 `[orchard-build]` 查看。自动复核只检查第一方可执行模块及源码中的本地 API 地址，不检查 source map 或无关第三方库字符串。
+- 微信开发者工具模拟器实际打开新根项目；Network 中 `/api/public/store`、`/api/public/products` 和 `/api/wechat/auth/login` 都请求 `https://orchard.douwen.top`，均返回 200。筛选本次 6 条 `/api/` 请求，0 条指向 localhost、127.0.0.1 或局域网地址。登录响应、code、token 与用户信息未写入记录。真机调试、扫码预览和新体验版的 Network 仍待设备验收；没有上传版本、创建订单或调用支付/退款。

@@ -2,7 +2,7 @@
   "appid": "wx1bd16bd6d48b3f93",
   "projectname": "orchard-mall-weapp",
   "compileType": "miniprogram",
-  "miniprogramRoot": "dist/weapp/",
+  "miniprogramRoot": "dist/server/weapp/",
   "setting": {
     "urlCheck": false,
     "es6": false,

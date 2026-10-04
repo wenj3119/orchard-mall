@@ -20,6 +20,8 @@ Manual parcel receipt, minimum partial-refund/replacement after-sales, private e
 
 The miniapp cart and address device findings now have code fixes: successful add returns to the prior page, and address selection uses the backend region catalog with server-resolved names and checkout reselection. Automated verification is tracked in the README; real-device acceptance for these fixes remains pending.
 
+The server miniapp build now has a fixed API origin and separate output directory from local builds and watch. Build artifact verification is automated; developer-tools Network and real-device request domains remain to be checked with the new build.
+
 Both miniapp builds, backend/admin builds, isolated backup/restore and the requested browser after-sales, replacement, settlement-adjustment and 390px supplier workflows passed locally with test data. On 2026-09-22 the WeChat Developer Tools simulator actually completed catalog → SKU → cart → address → shipping quote → order → development simulated payment → parcel receipt → refund evidence and progress, plus a replacement case and parcel. Consumer page steps were driven in the simulator; admin APIs only prepared catalog and processed fulfillment/review. Device acceptance and the full Nginx container route remain unverified; the latter is blocked by Docker Hub authorization via a refused local proxy. See `docs/release-readiness.md`. This is not a production launch sign-off.
 
 The supplier → multiple shipping origins → SKU supply model is now implemented in V8. It keeps one default supply per SKU and supply-owned inventory, adds supplier-scoped origin/default constraints and complete checkout snapshots, and intentionally does not implement automatic warehouse selection or inter-origin transfer.

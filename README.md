@@ -6,7 +6,7 @@ Nebula 的管理端和后端已部署（据线上验收反馈）。本地仓库�
 
 针对真机反馈，源码已调整加购后的返回和购物车刷新、登录后续加购，以及省市区联动地址、服务端地区校验和结算返回重新报价。地区数据由后端 `/api/public/regions` 统一提供；合法地址可以保存，是否配送由结算报价判断。**这些新流程尚未做真机或页面验收，也尚未发布到后端或微信体验版。**
 
-这次地址改动包含后端代码和随包地区资源，体验版使用前需先重新构建并发布后端（无新增 Flyway 迁移），核对 `/api/public/regions` 可访问。随后在 `miniapp` 目录执行 `TARO_APP_API_BASE=https://orchard.douwen.top TARO_APP_DEV_LOGIN_ENABLED=false TARO_APP_DEV_PAYMENT_ENABLED=false npm run build:nebula:weapp`，在微信开发者工具中打开现有 `miniapp` 项目、确认 `miniprogramRoot=dist/weapp/`、编译并上传新版本，再在小程序后台设为体验版；上传和设体验版都需人工操作。本轮仅进行了本机构建，没有执行上述发布或上传。
+这次地址改动包含后端代码和随包地区资源，体验版使用前需先重新构建并发布后端（无新增 Flyway 迁移），核对 `/api/public/regions` 可访问。随后在 `miniapp` 目录执行 `npm run build:nebula:weapp`，在微信开发者工具中打开 `miniapp` 项目、确认 `miniprogramRoot=dist/server/weapp/`、编译并上传新版本，再在小程序后台设为体验版；上传和设体验版都需人工操作。本轮验证了本机构建和开发者工具模拟器的请求域名，没有执行后端发布或小程序上传。
 
 当前隔离开发库 `orchard_mall_phase5_source` 已到 Flyway V8，保留固定商品 **DEV验收苹果**（商品 15、5斤装 SKU 16、供货关系 15、北京 700 分模板 5）供手工验收；售价 1234 分、北京一件应付 1934 分，均是测试值。管理端为 `http://localhost:5173`，后端为 `http://127.0.0.1:18084`。当前 18084 的 `dev` 进程显式开启开发消费者登录、模拟支付和模拟退款。微信开发者工具模拟器的独立订单 15 已完成申请 ¥5.00、核准 ¥5.00、开发模拟退款 ¥5.00 的页面验收；订单 14 的历史售后与退款记录保留。真机和支付宝页面尚未验收。详见 [固定数据与验证记录](docs/verification.md)。
 
@@ -82,33 +82,18 @@ npm run dev
 
 供应商账号由管理员在“供应商账号”页创建并绑定，初始密码至少 12 位；创建时需明确选择供应商，并核对供应商名称及 ID、用户名和角色后提交。供应商从浏览器 http://localhost:5173/supplier 登录，可在手机浏览器接单、分包发货、处理补发并查看自己的售后/结算数据。禁用或重置凭据会在服务端删除已有会话，令旧令牌立即失效，不提供供应商自助注册。供应商小程序入口尚未实现。
 
-小程序：
+小程序构建分为服务器与本地两套目录。**连接服务器的微信真机调试、预览、体验版只使用下面这一条构建命令**：
 
 ```sh
 cd miniapp
-npm ci
-TARO_APP_API_BASE=http://127.0.0.1:8080 TARO_APP_DEV_LOGIN_ENABLED=true TARO_APP_DEV_PAYMENT_ENABLED=true npm run dev:weapp
-# 或
-TARO_APP_API_BASE=http://127.0.0.1:8080 npm run dev:alipay
+npm run build:nebula:weapp
 ```
 
-微信开发者工具已导入 `miniapp` 目录，项目配置的 `miniprogramRoot` 为 `dist/weapp/`，AppID 为 `wx1bd16bd6d48b3f93`；工具 Stable v2.02.2608070 已登录、服务端口已开启，模拟器页面操作见 [验收记录](docs/verification.md)。支付宝工具仍导入 `miniapp/dist/alipay`。Taro 4.0.9 的构建脚本使用项目级 `--no-check` 跳过构建前 `plugin-doctor.validateConfig` 配置有效性检查（包括其远程 Schema 路径），避免该 macOS 原生校验线程 panic；仍执行独立的 TypeScript/webpack 编译及产物核对，不修改依赖和锁文件。待该校验组件在本机稳定运行、去掉参数后双端构建通过并补做配置校验，才能移除 workaround。
+命令从 `miniapp/server-build.json` 固定读取 `https://orchard.douwen.top`，强制关闭开发身份登录和模拟支付，并在产物中核对 API 常量、构建标识及本地 API 地址；不需要设置 `TARO_APP_API_BASE`。微信开发者工具**导入 `miniapp` 目录**，根目录 `project.config.json` 的 `miniprogramRoot` 是 `dist/server/weapp/`。打开项目后点击“编译”只编译该服务器产物；项目没有编译前 Taro 脚本。预览、真机调试及上传体验版前，运行 `npm run verify:server:weapp`；在开发者工具控制台查看 `[orchard-build]` 的构建标识和 API 域名，也可查看 `dist/server/weapp/build-info.json`。旧的 `miniapp/dist/weapp` 项目入口是历史产物，不能用于连接服务器；若开发者工具保存了该旧项目，请关闭并从 `miniapp` 根目录重新导入。
 
-### 微信服务器体验版构建（2026-10-03）
+需要本地后端调试时才显式运行 `npm run dev:weapp`（watch）或 `npm run build:weapp`；默认本地 API 为 `http://127.0.0.1:18084`，需要其他本地地址时仅对该命令设置 `TARO_APP_API_BASE`。本地产物只写入 `dist/local/weapp/`，应作为单独项目导入 `miniapp/dist/local/weapp`，不影响服务器项目。支付宝同理使用 `dist/server/alipay/` 与 `dist/local/alipay/`。Taro 4.0.9 构建仍带项目级 `--no-check`，因此另行执行 TypeScript 检查和产物校验。
 
-在 `miniapp` 目录执行：
-
-```sh
-TARO_APP_API_BASE=https://orchard.douwen.top TARO_APP_DEV_LOGIN_ENABLED=false TARO_APP_DEV_PAYMENT_ENABLED=false npm run build:nebula:weapp
-```
-
-`TARO_APP_API_BASE` 只填写 HTTPS 源站，不加尾随 `/` 或 `/api`；接口路径本身以 `/api` 开头，商品图片和售后凭证上传共用这个基址。`build:nebula:weapp` 要求显式 HTTPS 源站、隐藏开发身份输入并关闭小程序开发模拟支付展示。真实微信登录调用 `Taro.login()` 获取一次性 code，向 `/api/wechat/auth/login` 发送 code；后端换取 OpenID 后签发消费者会话。服务器体验版与本地开发版分开存储会话令牌，登录成功返回原页面。Nebula 后端 ConfigMap 需配置 `WECHAT_MINIAPP_APP_ID=wx1bd16bd6d48b3f93`，后端 Secret 需配置对应的 `WECHAT_MINIAPP_APP_SECRET`；后端须能访问 `api.weixin.qq.com`，三个 `DEV_*_ENABLED` 模拟开关保持关闭。2026-10-03 构建成功，`dist/weapp` 已核对使用 `https://orchard.douwen.top`，不含旧的本地 API 基址，登录页产物不含开发登录入口；真实微信凭据与真机联调尚未完成。微信开发者工具导入项目目录 `miniapp`，根目录 `project.config.json` 的 `miniprogramRoot=dist/weapp/` 指向本次产物。先发布新后端，再重新编译、预览或上传小程序版本，旧体验版不会自动更新；本轮未部署或上传。
-
-### 微信真机本地开发调试记录（2026-09-30）
-
-本次电脑的 `en0` 局域网地址是 `192.168.1.8`，后端监听 18084；仅供同一可信局域网的临时开发调试。微信构建命令为 `cd miniapp && TARO_APP_API_BASE=http://192.168.1.8:18084 TARO_APP_DEV_PAYMENT_ENABLED=false npm run build:weapp`，产物 `dist/weapp/common.js` 已核对为此地址。请求、商品图片与私有凭证上传均使用这个 API 基址，商品图片为 `http://192.168.1.8:18084/api/media/3`；凭证下载由后端鉴权，不直接开放 MinIO。电脑上的后台仍从 `http://localhost:5173` 进入。手机不能用 `localhost` 或 `127.0.0.1` 访问电脑，IP 变化时须重新构建并生成预览码。
-
-微信开发者工具的本地项目设置关闭合法域名校验，本次已生成临时[微信预览码](.artifacts/phase5/weapp-lan-preview-20260930.jpg)。用有该 AppID 开发或体验权限的微信账号扫码，手机与电脑连接同一局域网；真机实际请求、图片和上传是否成功仍需手机操作确认。若预览在手机上拒绝 HTTP/IP 请求，使用开发者工具的“真机调试”查看实际请求报错；不能把电脑访问成功或模拟器结果记为真机通过。本地调试配置不作为上线方案；正式环境需设备可达的 HTTPS 域名及微信平台对应的 request、uploadFile、downloadFile 合法域名配置。
+真实微信登录使用服务器接口 `/api/wechat/auth/login`；后端 AppID 和 AppSecret 仍须分别从部署配置与 Secret 注入。服务器版与开发版分开存储消费者会话。服务器包的接口请求、商品图片、凭证上传及将来的下载共用同一 API 域名，不从 Storage 读取 API 地址。微信平台还须配置该 HTTPS 域名的 request、uploadFile、downloadFile 合法域名。先确认后端接口可用，再构建并由有权限人员在开发者工具中上传、设为体验版；本轮未自动上传或发布。真机 Network 域名、登录和页面流程仍待实际验收。
 
 ### 开发账号安全初始化
 

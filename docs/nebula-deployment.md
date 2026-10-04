@@ -25,15 +25,7 @@ Nebula 代码支持 Git 仓库、Kaniko、镜像仓库凭据、项目 Namespace�
 
 候选测试域名 `mall-test.example.invalid` 仅为占位，不指向实际环境。选定 HTTPS 域名后，仅为 `orchard-mall-admin:80` 在 Nebula 创建路由，**先验证网关访问限制**（例如可信 VPN 或经批准的 IP allowlist）和 TLS，再允许测试者访问。路由配置应有同 Namespace TLS Secret，网关类型/IngressClass 与目标集群实际 Traefik 能力一致。若无法验证限制，不开放公网入口，三个模拟能力继续关闭。Nginx 托管后台、`/supplier` 和路由刷新；同源 `/api/` 代理到 `orchard-mall-backend:8080`，保留原始 `/api` 路径，上传上限 11m、后端单文件 10MB、售后凭证 5MB，代理读取/发送 60 秒。`ADMIN_ORIGIN` 设成与浏览器地址完全相同的 `https://<域名>`，没有尾随斜杠；管理端 `VITE_API_BASE` 保持空值以使用同源代理。图片使用 `/api/media/{id}`，由后端控制公开商品关联或管理员权限；私有售后凭证必须经 `/api/customer|admin|supplier/after-sales/evidence/{id}` 鉴权返回，MinIO bucket 不公开。
 
-微信/支付宝小程序不进 Kubernetes。实际 HTTPS 域名和测试访问限制已可从设备访问后，在仓库根目录分别运行：
-
-```sh
-cd miniapp
-TARO_APP_API_BASE=https://<已验证的测试域名> npm run build:nebula:weapp
-TARO_APP_API_BASE=https://<已验证的测试域名> npm run build:nebula:alipay
-```
-
-这两个脚本要求 HTTPS、拒绝示例域名和开发模拟支付开关，并强制隐藏开发身份登录；本地 `build:weapp` / `build:alipay` 与之分开。微信服务器体验版使用 `TARO_APP_API_BASE=https://orchard.douwen.top TARO_APP_DEV_PAYMENT_ENABLED=false TARO_APP_DEV_LOGIN_ENABLED=false npm run build:nebula:weapp`。产物在 `dist/weapp` / `dist/alipay`；还须在对应平台配置 request、uploadFile、downloadFile 合法域名，并由有权限的测试者在开发者工具及真机实际验收。微信真实登录代码已接入，真实凭据和真机联调尚未完成；支付宝真实登录及支付适配器仍不可用。
+微信/支付宝小程序不进 Kubernetes。服务器 API 固定为 `https://orchard.douwen.top`（见 `miniapp/server-build.json`）。在仓库根目录运行 `cd miniapp && npm run build:nebula:weapp`；服务器微信产物位于 `dist/server/weapp/`，开发者工具从 `miniapp` 根目录导入，`miniprogramRoot=dist/server/weapp/`。支付宝服务器产物用 `npm run build:nebula:alipay` 生成于 `dist/server/alipay/`。本地 `build:*` / `dev:*` 只写入 `dist/local/*/`。服务器构建完成后脚本会校验产物中的域名和构建标识，并拒绝本地 API 地址；`npm run verify:server:weapp` 可重复检查。对应平台仍需配置 request、uploadFile、downloadFile 合法域名，并在开发者工具和真机验收。微信真实登录代码已接入，真实凭据和真机联调尚未完成；支付宝真实登录及支付适配器仍不可用。
 
 微信登录发布时，在 Nebula 后端 ConfigMap 设置 `WECHAT_MINIAPP_APP_ID=wx1bd16bd6d48b3f93`，在后端 Secret 设置对应小程序的 `WECHAT_MINIAPP_APP_SECRET`。AppID 必须与 `miniapp/project.config.json` 一致；AppSecret 仅通过 Secret 注入，不作为镜像参数、前端变量或日志内容。后端 Pod 需能通过 HTTPS 访问 `api.weixin.qq.com`；先构建、发布含 `/api/wechat/auth/login` 的后端镜像并检查就绪，再上传新的微信小程序体验版。`DEV_CONSUMER_LOGIN_ENABLED`、`DEV_PAYMENT_ENABLED`、`DEV_REFUND_ENABLED` 均保持 `false`。用有权限的微信账号在真机验证登录、`/api/customer/me`、购物车和订单归属，重复登录应返回同一消费者 ID；换一个微信账号应得到独立数据。未配置真实 AppSecret 时该接口返回 503，不能把自动化模拟换码测试写成真实联调通过。
 
