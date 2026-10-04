@@ -90,6 +90,30 @@ class Phase2FlowTest {
             .hasMessageContaining("forbidden");
     }
 
+    @Test void regionCatalogControlsAddressNamesAndHierarchyWithoutShippingRestriction() throws Exception {
+        mvc.perform(get("/api/public/regions")).andExpect(status().isOk())
+            .andExpect(jsonPath("$[?(@.code=='110000')].name").value("北京市"));
+        String bad="{\"recipient\":\"张三\",\"mobile\":\"13800000001\",\"provinceCode\":\"042200\",\"cityCode\":\"042200\",\"districtCode\":\"042200\",\"detail\":\"测试路1号\"}";
+        mvc.perform(post("/api/customer/addresses").header("Authorization",customer1)
+            .contentType(MediaType.APPLICATION_JSON).content(bad)).andExpect(status().isBadRequest());
+        String crossed="{\"recipient\":\"张三\",\"mobile\":\"13800000001\",\"provinceCode\":\"610000\",\"cityCode\":\"610100\",\"districtCode\":\"110101\",\"detail\":\"测试路1号\"}";
+        mvc.perform(post("/api/customer/addresses").header("Authorization",customer1)
+            .contentType(MediaType.APPLICATION_JSON).content(crossed)).andExpect(status().isBadRequest());
+        String valid="{\"recipient\":\"张三\",\"mobile\":\"13800000001\",\"provinceCode\":\"110000\",\"provinceName\":\"伪造省\",\"cityCode\":\"110100\",\"cityName\":\"伪造市\",\"districtCode\":\"110101\",\"districtName\":\"伪造区\",\"detail\":\"测试路1号\"}";
+        long id=mapper.readTree(mvc.perform(post("/api/customer/addresses").header("Authorization",customer1)
+            .contentType(MediaType.APPLICATION_JSON).content(valid)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.provinceName").value("北京市"))
+            .andExpect(jsonPath("$.cityName").value("北京市"))
+            .andExpect(jsonPath("$.districtName").value("东城区"))
+            .andReturn().getResponse().getContentAsString()).get("id").asLong();
+        mvc.perform(put("/api/customer/addresses/"+id).header("Authorization",customer2)
+            .contentType(MediaType.APPLICATION_JSON).content(valid.replace("\"detail\"", "\"isDefault\":true,\"detail\""))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/customer/addresses").header("Authorization",customer1))
+            .andExpect(jsonPath("$[0].isDefault").value(true));
+        JsonNode unavailable=quote(customer1,id,cart(customer1,1));
+        assertThat(unavailable.get("purchasable").asBoolean()).isFalse();
+    }
+
     @Test void developmentLoginReusesIdentityWithinPlatformButSeparatesPlatforms() throws Exception {
         String sameId="dev-fixed-login-check";
         String wechat="{\"platform\":\"WECHAT\",\"externalUserId\":\""+sameId+"\"}";
