@@ -9,6 +9,12 @@ async function returnToPage(returnUrl?: string) {
     const decoded = returnUrl ? decodeURIComponent(returnUrl) : ''
     if (/^\/pages\/[a-z-]+\/index(?:\?.*)?$/.test(decoded)) target = decoded
   } catch { /* An invalid return URL falls back to the home page. */ }
+  const pages = Taro.getCurrentPages()
+  const previous = pages[pages.length - 2]
+  if (previous && target.split('?')[0] === `/${previous.route?.replace(/^\//, '')}` && target.startsWith('/pages/product/')) {
+    await Taro.navigateBack()
+    return
+  }
   if (['/pages/index/index', '/pages/cart/index', '/pages/orders/index', '/pages/categories/index'].includes(target.split('?')[0]))
     await Taro.switchTab({ url: target.split('?')[0] })
   else await Taro.redirectTo({ url: target })

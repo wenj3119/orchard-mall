@@ -13,6 +13,7 @@ export default function Cart() {
     <View className="line"><Checkbox value={String(i.id)} checked={i.selected} onClick={()=>change(i,i.quantity,!i.selected)} /><Text className="line-title">{i.productTitle}</Text><Text>{money(i.unitPriceFen)}</Text></View><Text className="subtle">{specText(i.specJson)}</Text>{i.unavailableReason&&<Text className="error">{i.unavailableReason}</Text>}
     <View className="toolbar"><Text className="small-button" onClick={()=>i.quantity>1&&change(i,i.quantity-1)}>−</Text><Text>{i.quantity}</Text><Text className="small-button" onClick={()=>change(i,i.quantity+1)}>＋</Text><Text className="small-button" onClick={async()=>setItems(await request(`/api/customer/cart/${i.id}`,'DELETE'))}>删除</Text></View>
   </View>)}
+    <View className="line"><Text>已选商品金额</Text><Text className="total">{money(selected.reduce((sum,i)=>sum+i.unitPriceFen*i.quantity,0))}</Text></View>
     <View className="primary-button" onClick={()=>selected.length?Taro.navigateTo({url:'/pages/checkout/index?ids='+selected.map(i=>i.id).join(',')}):Taro.showToast({title:'请选择可购买商品',icon:'none'})}>结算（{selected.length}）</View>
   </View>
 }
