@@ -276,3 +276,21 @@ Executed on 2026-09-20 with local JDK 26 targeting Java 21, Node 26, MySQL 8.4 i
 - 服务器 `npm run build:nebula:weapp` 生成 `dist/server/weapp`，本地 `npm run build:weapp` 和 `npm run dev:weapp` 生成 `dist/local/weapp`；本地构建与 watch 后服务器 `common.js` 哈希仍为 `81a14a04c772fcb17c86f43ddd8ac17156d473d7d8813b616925467dc1d81eff`。服务器构建在继承旧的 `TARO_APP_API_BASE=http://127.0.0.1:18084` 时仍编译为固定 `https://orchard.douwen.top`。直接运行未指定变体的 Taro 构建、或以回环地址声明服务器变体，均在配置阶段失败；模拟支付开关为 true 的服务器构建被拒绝。
 - `tsc --noEmit`、微信服务器/本地构建、支付宝服务器/本地构建和服务器产物复核通过。微信根项目 `miniprogramRoot=dist/server/weapp/`；服务器产物自己的 `project.config.json` 为 `./`。构建 ID 可在 `build-info.json` 和模拟器控制台 `[orchard-build]` 查看。自动复核只检查第一方可执行模块及源码中的本地 API 地址，不检查 source map 或无关第三方库字符串。
 - 微信开发者工具模拟器实际打开新根项目；Network 中 `/api/public/store`、`/api/public/products` 和 `/api/wechat/auth/login` 都请求 `https://orchard.douwen.top`，均返回 200。筛选本次 6 条 `/api/` 请求，0 条指向 localhost、127.0.0.1 或局域网地址。登录响应、code、token 与用户信息未写入记录。真机调试、扫码预览和新体验版的 Network 仍待设备验收；没有上传版本、创建订单或调用支付/退款。
+
+## 2026-10-04 商城交互修复（本地代码与隔离测试）
+
+本节沿用上节服务器构建隔离方案。用户反馈真机已走通微信登录、浏览、加购、地址保存和待支付订单创建；**本节新增交互尚无真机或页面验收**。没有对线上订单、包邮规则、库存、付款或退款发请求。
+
+| 范围 | 改动与验证 |
+| --- | --- |
+| 取消订单 | 订单详情先弹“确认取消订单？”；放弃确认不会请求。对取消响应和重新查询的 `CANCELLED/CLOSED/CLOSE_PENDING/PAID` 分开处理；成功切到订单 tab，列表 `useDidShow` 重载；处理中有限轮询并保留手动刷新，离页停止。响应丢失先查状态，不重复发送取消。小程序纯流程测试覆盖放弃、并发点击、处理中、已支付和响应丢失后核对；后端既有 `Phase2FlowTest`、`Phase3FlowTest` 覆盖库存幂等释放、取消/超时、支付/取消竞争。 |
+| 结算 | 地址、购物车重新加载或切换时立即作废旧报价；过期响应不能覆盖最新结果。不可购买、报价失败、不配送时只展示商品小计，运费为“无法计算/不可配送”，应付为“暂不可计算”，提交按钮不可操作；有效零运费显示“包邮”。下单期间加锁，网络不确定时同一地址、商品和报价沿用原幂等键重试。后端报价与下单复核仍保持原逻辑。小程序异步顺序测试覆盖旧响应失效；后端原有试算、报价变化、包邮/不配送与幂等用例通过。 |
+| 地区规则 | 后端通过既有 `regions-pca.json` 校验全国默认、省、市、区县编码，后台 `/api/public/regions` 名称选择可停在任一级；`000000` 明确为全国默认。重复地区、无效编码、负金额、零重量提供校验。现有历史未知编码显示警告而非替换。前端金额以元输入、精确转成分；重量明确为克。新增 H2 集成测试覆盖各级、重复与非法编码。未更改已有规则记录或线上包邮门槛。 |
+| 地址展示 | 地址列表、结算、消费者订单详情和后台订单详情只移除详细地址**开头完整重复**的省市区；供应商任务地址由服务端同样保守处理。历史订单快照与地址库内容未改写。新增前后端纯函数测试覆盖完整前缀、中间文字和部分前缀。详细地址输入提示不用重复填写地区。 |
+| 同类操作 | 地址与购物车删除、包裹收货、售后申请，后台商品上下架、供货删除、模板/供应商/发货地停用、绑定更换、库存调整、人工付款登记和冲正、管理员代发货及供应商接单/发货均补充对象、数量、金额或后果确认；原有售后审核表单继续承担审核确认。小程序和管理端请求封装将英文网络/状态错误转为中文，地区规则字段仍展示具体校验原因。关键请求增加加载或锁，失败保留表单。付款登记文案明确仅人工记账。390px 的确认框、弹层和表单补充宽度约束，**未做实际手机宽度页面验收**。 |
+
+验证命令：`backend/./mvnw test -q` 通过（新增地区规则与地址展示测试，原有付款/取消并发及归属测试通过）；`admin-web/npm run typecheck`、`npm run build` 通过；`miniapp/./node_modules/.bin/tsc --noEmit`、`node --test src/addressDisplay.test.mjs src/orderCancellation.test.mjs src/latestAsync.test.mjs` 通过（6 项）；`npm run build:nebula:weapp`、`npm run build:alipay` 通过。微信服务器产物由 `verify:server:weapp` 检查为 `https://orchard.douwen.top`，输出保持 `miniapp/dist/server/weapp`；支付宝本地产物在 `miniapp/dist/local/alipay`。本节结束前重建的标识以各自 `build-info.json` 为准。未改变目录隔离、未新增 Flyway 迁移。
+
+待验收：取消确认和回跳、不可配送与包邮页面、地址/数量变化时报价乱序、后台省市区选择及历史规则回显、供应商确认发货、390px 页面布局、微信与支付宝真机。当前会话没有可调用的页面控制工具；没有把纯测试或构建计作页面验证。发布顺序：先重新发布后端代码及地区资源，再重新构建并发布管理端；小程序在 `miniapp` 执行唯一服务器命令 `npm run build:nebula:weapp`，微信开发者工具导入 `miniapp` 根目录并确认 `miniprogramRoot=dist/server/weapp/`，编译、预览、人工上传后由有权限者设为体验版。真实支付及生产模拟能力禁用保持原状。
+
+隔离复核：执行本地 `npm run build:weapp` 只生成 `dist/local/weapp`，当时服务器 `dist/server/weapp/common.js` 的 SHA-256 在本地构建前后均为 `de27f0cff8ab9b733d83d000702bda14ea26836df711cb9b0b29cdd06e2bacdd`；服务器产物复核通过。随后完成最后的页面代码修正并重新运行 TypeScript 检查、微信服务器构建和支付宝本地构建，均通过。最终交付包 `dist/server/weapp/build-info.json` 的构建标识为 `server-weapp-2026-10-04T085211772Z`，API 为 `https://orchard.douwen.top`。

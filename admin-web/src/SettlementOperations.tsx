@@ -25,6 +25,12 @@ export default function SettlementOperations() {
 
   const reverse = async (values: Row) => {
     if (!detail || busy) return
+    const payment = detail.payments.find((entry: Row) => entry.id === values.paymentId)
+    Modal.confirm({ title: `冲正付款 · ${detail.statementNo}`, content: `将冲正人工付款 ${payment?.referenceNo || values.paymentId}，金额 ${fen(payment?.amountFen || 0)}。此操作追加冲正记录，不删除原记录，也不代表银行退款。`, okText: '确认冲正', cancelText: '继续核对', onOk: () => executeReverse(values) })
+  }
+
+  const executeReverse = async (values: Row) => {
+    if (!detail || busy) return
     setBusy(true)
     try {
       await api(`/api/admin/settlement-statements/${detail.id}/payments/${values.paymentId}/reverse`, json('POST', {
@@ -39,6 +45,12 @@ export default function SettlementOperations() {
   }
 
   const adjust = async (values: Row) => {
+    if (busy) return
+    const supplier = suppliers.find(row => row.id === values.supplierId)
+    Modal.confirm({ title: '追加结算调整？', content: `${supplier?.name || '供应商'} · ${fen(values.amountFen)}。将追加台账明细，已有付款及订单记录不变。`, okText: '确认追加', cancelText: '继续核对', onOk: () => executeAdjust(values) })
+  }
+
+  const executeAdjust = async (values: Row) => {
     if (busy) return
     setBusy(true)
     try {

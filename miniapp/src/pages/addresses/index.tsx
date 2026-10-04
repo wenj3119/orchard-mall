@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Input, Picker, Switch, Text, View } from '@tarojs/components'
 import { ApiError, get, newCheckoutAddressKey, request, requireLogin, type Address, type Region } from '../../api'
+import { displayAddress } from '../../addressDisplay'
 
 type Form = Pick<Address, 'recipient' | 'mobile' | 'provinceCode' | 'cityCode' | 'districtCode' | 'detail' | 'isDefault'>
 const empty: Form = { recipient: '', mobile: '', provinceCode: '', cityCode: '', districtCode: '', detail: '', isDefault: false }
@@ -24,6 +25,7 @@ export default function Addresses() {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const busy = useRef(false)
+  const deleting = useRef(false)
   const load = () => get<Address[]>('/api/customer/addresses').then(setItems).catch(e => setError((e as Error).message))
   const loadRegions = () => { setRegionError(''); get<Region[]>('/api/public/regions').then(setRegions).catch(() => setRegionError('地区加载失败，请重试')) }
   useEffect(() => { if (requireLogin('/pages/addresses/index')) load(); loadRegions() }, [])
@@ -66,8 +68,8 @@ export default function Addresses() {
     finally { busy.current = false; setSaving(false) }
   }
   return <View className="page"><Text className="heading">收货地址</Text>{items.map(a => <View className="panel" key={a.id}>
-    <Text className="line-title">{a.recipient}　{a.mobile}{a.isDefault ? ' · 默认' : ''}</Text><Text className="subtle">{a.provinceName}{a.cityName}{a.districtName}{a.detail}</Text>
-    <View className="toolbar"><Text className="small-button" onClick={() => startEdit(a)}>编辑</Text>{!a.isDefault && <Text className="small-button" onClick={async () => { try { await request(`/api/customer/addresses/${a.id}/default`, 'PUT'); await load() } catch (e) { setError((e as Error).message) } }}>设默认</Text>}<Text className="small-button" onClick={async () => { try { await request(`/api/customer/addresses/${a.id}`, 'DELETE'); await load() } catch (e) { setError((e as Error).message) } }}>删除</Text></View>
+    <Text className="line-title">{a.recipient}　{a.mobile}{a.isDefault ? ' · 默认' : ''}</Text><Text className="subtle">{displayAddress(a)}</Text>
+    <View className="toolbar"><Text className="small-button" onClick={() => startEdit(a)}>编辑</Text>{!a.isDefault && <Text className="small-button" onClick={async () => { try { await request(`/api/customer/addresses/${a.id}/default`, 'PUT'); await load() } catch (e) { setError((e as Error).message) } }}>设默认</Text>}<Text className="small-button" onClick={async () => { if (deleting.current) return; deleting.current = true; try { const answer = await Taro.showModal({ title: '删除收货地址？', content: `将删除 ${a.recipient} 的地址：${displayAddress(a)}。历史订单地址不会改变。`, cancelText: '保留地址', confirmText: '确认删除' }); if (answer.confirm) { await request(`/api/customer/addresses/${a.id}`, 'DELETE'); await load(); Taro.showToast({ title: '地址已删除', icon: 'success' }) } } catch (e) { setError(friendlyError(e as Error)) } finally { deleting.current = false } }}>删除</Text></View>
   </View>)}
     <Text className="heading">{editing ? '编辑地址' : '新增地址'}</Text>
     {editing && <Text className="small-button" onClick={() => { setEditing(undefined); setForm(empty); setHistoricalError(''); setError('') }}>改为新增</Text>}
@@ -78,6 +80,7 @@ export default function Addresses() {
     {regionPicker('市', cities, form.cityCode, code => { setForm(current => ({ ...current, cityCode: code, districtCode: '' })); setHistoricalError('') })}
     {regionPicker('区县', districts, form.districtCode, code => { setForm(current => ({ ...current, districtCode: code })); setHistoricalError('') })}
     {historicalError && <Text className="error">{historicalError}</Text>}
+    <Text className="note">填写街道、村、小区、楼栋及门牌，无需重复填写省市区</Text>
     {input('detail', '详细地址')}
     <View className="line"><Text>默认地址</Text><Switch checked={form.isDefault} disabled={Boolean(editing && items.find(x => x.id === editing)?.isDefault)} onChange={e => setForm(current => ({ ...current, isDefault: e.detail.value }))} /></View>
     {error && <Text className="error">{error}</Text>}

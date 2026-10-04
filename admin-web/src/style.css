@@ -13,6 +13,10 @@ body { margin:0; background:#f5f6f7; font-family:system-ui,-apple-system,"PingFa
   .login { margin:6vh 12px; }
   .ant-modal { max-width:calc(100vw - 16px); top:8px; padding-bottom:8px; }
   .ant-modal-content { padding:14px !important; }
+  .ant-modal-confirm { width:calc(100vw - 24px) !important; max-width:100%; }
+  .ant-modal-confirm-content { overflow-wrap:anywhere; }
+  .ant-popover { max-width:calc(100vw - 24px); }
+  .ant-space { max-width:100%; }
   .ant-form-inline { display:block; }
   .ant-form-inline .ant-form-item { margin:0 0 10px; width:100%; }
   .ant-form-inline .ant-form-item-control-input-content > * { width:100% !important; }

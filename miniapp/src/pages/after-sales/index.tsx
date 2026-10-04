@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Input, Picker, Text, Textarea, View } from '@tarojs/components'
 import { get, money, request, upload } from '../../api'
@@ -25,6 +25,7 @@ export default function AfterSales() {
   const [reason, setReason] = useState('DAMAGED')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const submitBusy = useRef(false)
   const [submittedCaseId, setSubmittedCaseId] = useState<number>()
   const [uploading, setUploading] = useState(false)
   const load = () => get<Case[]>('/api/customer/after-sales').then(setItems).catch(e => Taro.showToast({ title: e.message, icon: 'none' }))
@@ -57,7 +58,7 @@ export default function AfterSales() {
   }
 
   const submit = async () => {
-    if (submitting) return
+    if (submitBusy.current) return
     if (!eligibility || eligibility.remainingQty < 1 || (action === 'REFUND' && maxForSelection < 1)) {
       Taro.showToast({ title: eligibility?.reason || '正在读取可申请范围', icon: 'none' })
       return
@@ -67,8 +68,10 @@ export default function AfterSales() {
       Taro.showToast({ title: '请输入有效金额，最多两位小数且不超过当前可申请金额', icon: 'none' })
       return
     }
-    setSubmitting(true)
+    submitBusy.current = true; setSubmitting(true)
     try {
+      const confirmation = await Taro.showModal({ title: `确认提交${action === 'REFUND' ? '退款' : '补发'}申请？`, content: `${qty} 件商品${action === 'REFUND' ? `，申请退款 ${money(requestedRefundFen!)}` : '，申请补发'}。提交后将等待店主审核。`, cancelText: '继续填写', confirmText: '确认提交' })
+      if (!confirmation.confirm) return
       const c = await request<Detail>(`/api/customer/orders/${params.orderId}/after-sales`, 'POST', {
         action, reasonCode: reason, reasonDetail: description,
         ...(action === 'REFUND' ? { requestedRefundFen } : {}),
@@ -80,7 +83,7 @@ export default function AfterSales() {
       Taro.showToast({ title: '售后申请已提交', icon: 'success' })
       await addEvidence(c.id)
     } catch (e) { Taro.showToast({ title: (e as Error).message, icon: 'none' }) }
-    finally { setSubmitting(false) }
+    finally { submitBusy.current = false; setSubmitting(false) }
   }
 
   return <View className="page">

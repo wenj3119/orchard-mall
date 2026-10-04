@@ -19,7 +19,7 @@ public class ApiErrors {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ValidationError> validation(MethodArgumentNotValidException e) {
         var fields=e.getBindingResult().getFieldErrors().stream()
-            .map(error->new FieldViolation(error.getField(),validationMessage(error.getCode())))
+            .map(error->new FieldViolation(error.getField(),validationMessage(error.getCode(),error.getDefaultMessage())))
             .sorted(Comparator.comparing(FieldViolation::field))
             .distinct()
             .toList();
@@ -33,7 +33,8 @@ public class ApiErrors {
             "INVALID_REQUEST_BODY","请求正文不是有效的 JSON",List.of()));
     }
 
-    private String validationMessage(String code) {
+    private String validationMessage(String code,String annotationMessage) {
+        if(annotationMessage!=null && annotationMessage.codePoints().anyMatch(cp -> cp>=0x4e00 && cp<=0x9fff)) return annotationMessage;
         if(code==null) return "参数不合法";
         return switch(code) {
             case "NotNull","NotBlank","NotEmpty" -> "不能为空";

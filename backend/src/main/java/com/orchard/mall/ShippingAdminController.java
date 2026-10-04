@@ -3,6 +3,7 @@ package com.orchard.mall;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,11 +15,12 @@ import java.util.*;
 @RequestMapping("/api/admin")
 public class ShippingAdminController {
     private final JdbcTemplate db;
-    public ShippingAdminController(JdbcTemplate db) { this.db=db; }
-    public record TemplateInput(@NotBlank String name,@PositiveOrZero Long freeThresholdFen,boolean enabled) {}
-    public record RuleInput(@NotBlank String regionCode,boolean blocked,
-        @Positive int firstWeightG,@PositiveOrZero long firstFeeFen,
-        @Positive int stepWeightG,@PositiveOrZero long stepFeeFen) {}
+    private final RegionCatalog regions;
+    public ShippingAdminController(JdbcTemplate db, RegionCatalog regions) { this.db=db; this.regions=regions; }
+    public record TemplateInput(@NotBlank(message="模板名称不能为空") String name,@PositiveOrZero(message="包邮门槛不能小于 0 分") Long freeThresholdFen,boolean enabled) {}
+    public record RuleInput(@NotBlank(message="请选择规则地区") String regionCode,boolean blocked,
+        @Positive(message="首重必须是正整数克") int firstWeightG,@PositiveOrZero(message="首费不能小于 0 分") long firstFeeFen,
+        @Positive(message="续重单位必须是正整数克") int stepWeightG,@PositiveOrZero(message="续费不能小于 0 分") long stepFeeFen) {}
     public record AssignTemplate(@NotNull Long templateId) {}
     private long insert(String sql,Object... args) {
         var key=new GeneratedKeyHolder();
@@ -27,8 +29,12 @@ public class ShippingAdminController {
     }
     private List<Map<String,Object>> rules(long templateId) {
         return db.query("SELECT id,region_code,blocked,first_weight_g,first_fee_fen,step_weight_g,step_fee_fen FROM shipping_rule WHERE template_id=? ORDER BY region_code",
-            (rs,n)->Map.of("id",rs.getLong(1),"regionCode",rs.getString(2),"blocked",rs.getBoolean(3),
+            (rs,n)->Map.of("id",rs.getLong(1),"regionCode",rs.getString(2),"regionName",ruleNameOrUnknown(rs.getString(2)),"blocked",rs.getBoolean(3),
                 "firstWeightG",rs.getInt(4),"firstFeeFen",rs.getLong(5),"stepWeightG",rs.getInt(6),"stepFeeFen",rs.getLong(7)),templateId);
+    }
+    private String ruleNameOrUnknown(String code) {
+        try { return regions.ruleName(code); }
+        catch (ResponseStatusException ignored) { return "历史地区编码无法识别"; }
     }
     private Map<String,Object> template(long id) {
         var found=db.query("SELECT id,name,free_threshold_fen,enabled,version FROM shipping_template WHERE id=?",
@@ -60,26 +66,32 @@ public class ShippingAdminController {
         return template(id);
     }
     private void validateRule(RuleInput x) {
-        String code=x.regionCode();
-        if(!code.equals("000000") && (!code.matches("[0-9]{6}") || Set.of("710000","810000","820000").contains(code)))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Only mainland six-digit region codes or 000000");
+        regions.ruleName(x.regionCode());
+    }
+    private void validateDuplicate(long templateId,long excludedId,String code) {
+        Integer count=db.queryForObject("SELECT COUNT(*) FROM shipping_rule WHERE template_id=? AND region_code=? AND id<>?",Integer.class,templateId,code,excludedId);
+        if(count!=null && count>0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"地区：该模板已有此地区规则，请编辑已有规则");
     }
     @PostMapping("/shipping-templates/{id}/rules")
     @Transactional
     public Map<String,Object> createRule(@PathVariable long id,@Valid @RequestBody RuleInput x) {
-        template(id);validateRule(x);
-        insert("INSERT INTO shipping_rule (template_id,region_code,blocked,first_weight_g,first_fee_fen,step_weight_g,step_fee_fen) VALUES (?,?,?,?,?,?,?)",
-            id,x.regionCode(),x.blocked(),x.firstWeightG(),x.firstFeeFen(),x.stepWeightG(),x.stepFeeFen());
+        template(id);validateRule(x);validateDuplicate(id,0,x.regionCode());
+        try {
+            insert("INSERT INTO shipping_rule (template_id,region_code,blocked,first_weight_g,first_fee_fen,step_weight_g,step_fee_fen) VALUES (?,?,?,?,?,?,?)",
+                id,x.regionCode(),x.blocked(),x.firstWeightG(),x.firstFeeFen(),x.stepWeightG(),x.stepFeeFen());
+        } catch (DuplicateKeyException e) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"地区：该模板已有此地区规则，请编辑已有规则",e); }
         db.update("UPDATE shipping_template SET version=version+1 WHERE id=?",id);
         return template(id);
     }
     @PutMapping("/shipping-templates/{id}/rules/{ruleId}")
     @Transactional
     public Map<String,Object> updateRule(@PathVariable long id,@PathVariable long ruleId,@Valid @RequestBody RuleInput x) {
-        validateRule(x);
-        if(db.update("UPDATE shipping_rule SET region_code=?,blocked=?,first_weight_g=?,first_fee_fen=?,step_weight_g=?,step_fee_fen=? WHERE id=? AND template_id=?",
-            x.regionCode(),x.blocked(),x.firstWeightG(),x.firstFeeFen(),x.stepWeightG(),x.stepFeeFen(),ruleId,id)==0)
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        validateRule(x);validateDuplicate(id,ruleId,x.regionCode());
+        try {
+            if(db.update("UPDATE shipping_rule SET region_code=?,blocked=?,first_weight_g=?,first_fee_fen=?,step_weight_g=?,step_fee_fen=? WHERE id=? AND template_id=?",
+                x.regionCode(),x.blocked(),x.firstWeightG(),x.firstFeeFen(),x.stepWeightG(),x.stepFeeFen(),ruleId,id)==0)
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        } catch (DuplicateKeyException e) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"地区：该模板已有此地区规则，请编辑已有规则",e); }
         db.update("UPDATE shipping_template SET version=version+1 WHERE id=?",id);
         return template(id);
     }

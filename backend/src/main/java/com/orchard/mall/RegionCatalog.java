@@ -25,6 +25,19 @@ public class RegionCatalog {
 
     public List<Region> provinces() { return provinces; }
 
+    public String ruleName(String code) {
+        if ("000000".equals(code)) return "全国默认";
+        for (var province : provinces) {
+            if (province.code().equals(code)) return province.name();
+            for (var city : province.children()) {
+                if (city.code().equals(code)) return province.name().equals(city.name()) ? city.name() + "（市级）" : province.name() + city.name();
+                for (var district : city.children())
+                    if (district.code().equals(code)) return province.name() + (province.name().equals(city.name()) ? "" : city.name()) + district.name();
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "地区：编码无效，请重新选择省、市或区县");
+    }
+
     public Names resolve(String provinceCode, String cityCode, String districtCode) {
         for (var province : provinces) {
             if (!province.code().equals(provinceCode)) continue;
